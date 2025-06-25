@@ -1,142 +1,6 @@
-""" import random
-
-# Valores possíveis para cada característica
-CORES = ['Vermelha', 'Verde', 'Branca', 'Amarela', 'Azul']
-NACIONALIDADES = ['Inglês', 'Sueco', 'Dinamarquês', 'Norueguês', 'Alemão']
-BEBIDAS = ['Chá', 'Café', 'Leite', 'Cerveja', 'Água']
-CIGARROS = ['Pall Mall', 'Dunhill', 'Blends', 'BlueMaster', 'Prince']
-ANIMAIS = ['Cachorros', 'Pássaros', 'Gatos', 'Cavalos', 'Peixe']
-
-POP_SIZE = 200
-MAX_GEN = 10000
-
-# Gera um indivíduo válido (sem repetição por coluna)
-def gerar_individuo():
-    cores = random.sample(CORES, 5)
-    nacs = random.sample(NACIONALIDADES, 5)
-    bebs = random.sample(BEBIDAS, 5)
-    cigs = random.sample(CIGARROS, 5)
-    anis = random.sample(ANIMAIS, 5)
-
-    individuo = []
-    for i in range(5):
-        casa = (cores[i], nacs[i], bebs[i], cigs[i], anis[i])
-        individuo.append(casa)
-    return individuo
-
-# Avalia um indivíduo com base nas 15 regras
-def fitness(ind):
-    score = 0
-    casas = ind
-
-    for i, casa in enumerate(casas):
-        cor, nac, beb, cig, ani = casa
-
-        if nac == 'Norueguês' and i == 0:
-            score += 1
-        if nac == 'Inglês' and cor == 'Vermelha':
-            score += 1
-        if nac == 'Sueco' and ani == 'Cachorros':
-            score += 1
-        if nac == 'Dinamarquês' and beb == 'Chá':
-            score += 1
-        if cor == 'Verde' and i < 4 and casas[i+1][0] == 'Branca':
-            score += 1
-        if cor == 'Verde' and beb == 'Café':
-            score += 1
-        if cig == 'Pall Mall' and ani == 'Pássaros':
-            score += 1
-        if cor == 'Amarela' and cig == 'Dunhill':
-            score += 1
-        if i == 2 and beb == 'Leite':
-            score += 1
-        if cig == 'Blends' and vizinho(i, casas, lambda x: x[4] == 'Gatos'):
-            score += 1
-        if ani == 'Cavalos' and vizinho(i, casas, lambda x: x[3] == 'Dunhill'):
-            score += 1
-        if cig == 'BlueMaster' and beb == 'Cerveja':
-            score += 1
-        if nac == 'Alemão' and cig == 'Prince':
-            score += 1
-        if nac == 'Norueguês' and vizinho(i, casas, lambda x: x[0] == 'Azul'):
-            score += 1
-        if cig == 'Blends' and vizinho(i, casas, lambda x: x[2] == 'Água'):
-            score += 1
-
-    return score
-
-def vizinho(i, casas, cond):
-    if i > 0 and cond(casas[i-1]):
-        return True
-    if i < 4 and cond(casas[i+1]):
-        return True
-    return False
-
-# Seleção por roleta
-def selecao_roleta(pop, scores):
-    total = sum(scores)
-    pick = random.uniform(0, total)
-    current = 0
-    for i, ind in enumerate(pop):
-        current += scores[i]
-        if current > pick:
-            return ind
-    return pop[-1]
-
-# Crossover por casa
-def crossover(p1, p2):
-    ponto = random.randint(1, 4)
-    filho = p1[:ponto] + p2[ponto:]
-    return filho
-
-# Mutação simples
-def mutacao(ind):
-    i1, i2 = random.sample(range(5), 2)
-    attr = random.randint(0, 4)
-
-    casa1 = list(ind[i1])
-    casa2 = list(ind[i2])
-
-    casa1[attr], casa2[attr] = casa2[attr], casa1[attr]
-    ind[i1], ind[i2] = casa1, casa2
-    return ind
-
-# Loop principal
-def algoritmo_genetico():
-    pop = [gerar_individuo() for _ in range(POP_SIZE)]
-    for gen in range(MAX_GEN):
-        scores = [fitness(ind) for ind in pop]
-        if 15 in scores:
-            index = scores.index(15)
-            print(f"\n\u2714 Solução encontrada na geração {gen}:")
-            mostrar_individuo(pop[index])
-            return pop[index]
-
-        nova_pop = []
-        for _ in range(int(POP_SIZE * 0.2)):
-            nova_pop.append(selecao_roleta(pop, scores))
-        while len(nova_pop) < POP_SIZE:
-            pai1 = selecao_roleta(pop, scores)
-            pai2 = selecao_roleta(pop, scores)
-            filho = crossover(pai1, pai2)
-            if random.random() < 0.1:
-                filho = mutacao(filho)
-            nova_pop.append(filho)
-        pop = nova_pop
-    print("\n\u274C Nenhuma solução encontrada.")
-
-def mostrar_individuo(ind):
-    print("\nCasa\tCor\t\tNacionalidade\tBebida\t\tCigarro\t\tAnimal")
-    for i, casa in enumerate(ind):
-        print(f"{i+1}\t" + "\t".join(f"{c}".ljust(10) for c in casa))
-
-if __name__ == "__main__":
-    algoritmo_genetico()
- """
 
 import random
 import copy
-import matplotlib.pyplot as plt
 from collections import defaultdict
 
 # Configurações Gerais
@@ -318,18 +182,13 @@ quantidade_geracoes = 0
 maior_pontuacao = 0
 resposta = []
 
-x_media = []
-y_media = []
-x_maior = []
-y_maior = []
-
 # Criando população inicial
 for i in range(tamanho_populacao):
     populacao.append(create())
 
 while (maior_pontuacao != 36):
     # log da geração atual
-    log = "Geração {n_geracao}... maior pontuação: {pontuacao}..."
+    log = "Geração {n_geracao} -> maior pontuação: {pontuacao}"
     print(log.format(n_geracao=quantidade_geracoes, solucao=resposta, pontuacao=maior_pontuacao))
 
     # Avaliando cada solução com a função fitness
@@ -390,15 +249,8 @@ while (maior_pontuacao != 36):
     ranking = {}
     quantidade_geracoes += 1
     tabela_por_pontos.clear()
-    x_media.append(quantidade_geracoes)
-    y_media.append(media_pontos)
-    x_maior.append(quantidade_geracoes)
-    y_maior.append(maior_pontuacao)
 
 log = "Geração {n_geracao}... Solução: "
 print(log.format(n_geracao=quantidade_geracoes))
 imprime_solucao(resposta[0])
 
-plt.plot(x_media, y_media, color='blue')
-plt.plot(x_maior, y_maior, color='green')
-plt.show()
