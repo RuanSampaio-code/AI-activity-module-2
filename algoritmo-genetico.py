@@ -1,256 +1,207 @@
-
 import random
-import copy
-from collections import defaultdict
 
-# Configurações Gerais
-tamanho_populacao = 200
-taxa_sobrevivencia = 0.35
-taxa_cruzamento = 0.65
-taxa_mutacao = 0.05
-taxa_migracao = 0.05
+# Atributos e mapeamentos
+CORES = ["Amarela", "Azul", "Branca", "Verde", "Vermelha"]
+NACIONALIDADES = ["Norueguês", "Dinamarquês", "Inglês", "Alemão", "Sueco"]
+BEBIDAS = ["Água", "Chá", "Leite", "Cerveja", "Café"]
+CIGARROS = ["Blends", "Dunhill", "BlueMaster", "Pall Mall", "Prince"]
+ANIMAIS = ["Gatos", "Cavalos", "Cachorros", "Pássaros", "Peixes"]
 
-parametros = {
-    "cor": ["amarela", "azul", "branca", "verde", "vermelha"],
-    "nacionalidade": ["alemao", "dinamarques", "noruegues", "ingles", "sueco"],
-    "bebida": ["agua", "cha", "cafe", "leite", "cerveja"],
-    "cigarro": ["dunhill", "blends", "pall mall", "prince", "blue master"],
-    "animal": ["gatos", "passaros", "cavalos", "peixes", "cachorros"]
-}
+TAMANHO_CASA = 15
+CASAS_TOTAL = 5
+TAMANHO_CROMOSSOMO = TAMANHO_CASA * CASAS_TOTAL
 
+def binario_para_inteiro(bits): return int(bits, 2)
 
-# Cria uma solução válida escolhendo aleatoriamente
-# uma cor, nacionalidade, bebida, cigarro e animal.
-def create():
-    parametros_copy = copy.deepcopy(parametros)
-    solucao = []
+def inteiro_para_binario(valor, tamanho=3): return format(valor, f'0{tamanho}b')
 
-    for i in range(5):
-        casa = {}
-        for parametro in parametros_copy:
-            atributo = random.choice(parametros_copy[parametro])
-            parametros_copy[parametro].remove(atributo)
-            casa[parametro] = atributo
-        solucao.append(casa)
-    return solucao
+def decodificar_casa(bits_15):
+    """Decodifica uma casa (15 bits) para atributos legíveis"""
+    cor = CORES[binario_para_inteiro(bits_15[0:3]) % 5]
+    nacionalidade = NACIONALIDADES[binario_para_inteiro(bits_15[3:6]) % 5]
+    bebida = BEBIDAS[binario_para_inteiro(bits_15[6:9]) % 5]
+    cigarro = CIGARROS[binario_para_inteiro(bits_15[9:12]) % 5]
+    animal = ANIMAIS[binario_para_inteiro(bits_15[12:15]) % 5]
+    return {
+        "cor": cor,
+        "nacionalidade": nacionalidade,
+        "bebida": bebida,
+        "cigarro": cigarro,
+        "animal": animal
+    }
 
 
-# Avalia a solução com base nos critérios estabelecidos.
-def fitness(solucao):
-    pontuacao = 0
-    for i in range(len(solucao)):
-        casa = solucao[i]
+def decodificar_cromossomo(bits_75):
+    """Decodifica um cromossomo de 75 bits para todas as casas"""
+    casas = []
+    for i in range(CASAS_TOTAL):
+        inicio = i * TAMANHO_CASA
+        casas.append(decodificar_casa(bits_75[inicio:inicio + TAMANHO_CASA]))
+    return casas
+def fitness(bits_75):
+    """Calcula quantas regras são atendidas (usando pesos diferentes para algumas regras)"""
+    casas = decodificar_cromossomo(bits_75)
+    score = 0
+    get_casa = lambda i: casas[i]
 
-        # O Norueguês vive na primeira casa
-        if (casa["nacionalidade"] == "noruegues" and i == 0):
-            pontuacao += 4
+    # 1. O Norueguês vive na primeira casa
+    if get_casa(0)['nacionalidade'] == 'Norueguês': score += 4
 
-        # O Inglês vive na casa Vermelha.
-        if (casa["cor"] == "vermelha" and casa["nacionalidade"] == "ingles"):
-            pontuacao += 1
+    # 2. O Inglês vive na casa Vermelha
+    if any(c['nacionalidade'] == 'Inglês' and c['cor'] == 'Vermelha' for c in casas): score += 1
 
-        # O Sueco tem Cachorros como animais de estimação.
-        if (casa["nacionalidade"] == "sueco" and casa["animal"] == "cachorros"):
-            pontuacao += 1
+    # 3. O Sueco tem Cachorros como animais de estimação
+    if any(c['nacionalidade'] == 'Sueco' and c['animal'] == 'Cachorros' for c in casas): score += 1
 
-        # O Dinamarquês bebe Chá.
-        if (casa["nacionalidade"] == "dinamarques" and casa["bebida"] == "cha"):
-            pontuacao += 1
+    # 4. O Dinamarquês bebe Chá
+    if any(c['nacionalidade'] == 'Dinamarquês' and c['bebida'] == 'Chá' for c in casas): score += 1
 
-        # A casa Verde fica do lado esquerdo da casa Branca.
-        if (i + 1 < len(solucao) and solucao[i]["cor"] == "verde"
-                and solucao[i + 1]["cor"] == "branca"):
-            pontuacao += 4
+    # 5. A casa Verde fica à esquerda da casa Branca
+    cores = [c['cor'] for c in casas]
+    if 'Verde' in cores and 'Branca' in cores:
+        if cores.index('Verde') == cores.index('Branca') - 1:
+            score += 4
 
-        # O homem que vive na casa Verde bebe Café.
-        if (casa["cor"] == "verde" and casa["bebida"] == "cafe"):
-            pontuacao += 1
+    # 6. O homem que vive na casa Verde bebe Café
+    if any(c['cor'] == 'Verde' and c['bebida'] == 'Café' for c in casas): score += 1
 
-        # O homem que fuma cigarro cria pássaros
-        if (casa["cigarro"] == "pall mall" and casa["animal"] == "passaros"):
-            pontuacao += 1
+    # 7. O homem que fuma Pall Mall cria Pássaros
+    if any(c['cigarro'] == 'Pall Mall' and c['animal'] == 'Pássaros' for c in casas): score += 1
 
-        # O homem que mora na casa amarela fuma dunhill
-        if (casa["cor"] == "amarela" and casa["cigarro"] == "dunhill"):
-            pontuacao += 1
+    # 8. O homem que vive na casa Amarela fuma Dunhill
+    if any(c['cor'] == 'Amarela' and c['cigarro'] == 'Dunhill' for c in casas): score += 1
 
-        # O homem que vive na casa do meio bebe Leite
-        if (i == 2 and casa["bebida"] == "leite"):
-            pontuacao += 4
+    # 9. O homem que vive na casa do meio bebe Leite
+    if get_casa(2)['bebida'] == 'Leite': score += 4
 
-        # O homem que fuma Blends vive ao lado do que tem Gatos
-        if (casa["cigarro"] == "blends"):
-            if ((i - 1 >= 0 and solucao[i - 1]["animal"] == "gatos")
-                    or (i + 1 < len(solucao) and solucao[i + 1]["animal"] == "gatos")):
-                pontuacao += 4
+    # 10. O homem que fuma Blends vive ao lado do que tem Gatos
+    for i, c in enumerate(casas):
+        if c['cigarro'] == 'Blends':
+            if ((i > 0 and casas[i-1]['animal'] == 'Gatos') or (i < 4 and casas[i+1]['animal'] == 'Gatos')):
+                score += 4
+                break
 
-        # O homem que cria Cavalos vive ao lado do que fuma Dunhill
-        if (casa["animal"] == "cavalos"):
-            if ((i - 1 >= 0 and solucao[i - 1]["cigarro"] == "dunhill") or
-                    (i + 1 < len(solucao) and solucao[i + 1]["cigarro"] == "dunhill")):
-                pontuacao += 4
+    # 11. O homem que cria Cavalos vive ao lado do que fuma Dunhill
+    for i, c in enumerate(casas):
+        if c['animal'] == 'Cavalos':
+            if ((i > 0 and casas[i-1]['cigarro'] == 'Dunhill') or (i < 4 and casas[i+1]['cigarro'] == 'Dunhill')):
+                score += 1
+                break
 
-        # O homem que fuma BlueMaster bebe Cerveja
-        if (casa["cigarro"] == "blue master" and casa["bebida"] == "cerveja"):
-            pontuacao += 1
+    # 12. O homem que fuma BlueMaster bebe Cerveja
+    if any(c['cigarro'] == 'BlueMaster' and c['bebida'] == 'Cerveja' for c in casas): score += 1
 
-        # O Alemão fuma Prince
-        if (casa["nacionalidade"] == "alemao" and casa["cigarro"] == "prince"):
-            pontuacao += 1
+    # 13. O Alemão fuma Prince
+    if any(c['nacionalidade'] == 'Alemão' and c['cigarro'] == 'Prince' for c in casas): score += 1
 
-        # O Norueguês vive ao lado da casa Azul
-        if (casa["nacionalidade"] == "noruegues"):
-            if ((i - 1 >= 0 and solucao[i - 1]["cor"] == "azul")
-                    or (i + 1 < len(solucao) and solucao[i + 1]["cor"] == "azul")):
-                pontuacao += 4
+    # 14. O Norueguês vive ao lado da casa Azul
+    for i, c in enumerate(casas):
+        if c['nacionalidade'] == 'Norueguês':
+            if ((i > 0 and casas[i-1]['cor'] == 'Azul') or (i < 4 and casas[i+1]['cor'] == 'Azul')):
+                score += 4
+                break
 
-        # O homem que fuma Blends é vizinho do que bebe Água
-        if (casa["cigarro"] == "blends"):
-            if ((i - 1 >= 0 and solucao[i - 1]["bebida"] == "agua")
-                    or (i + 1 < len(solucao) and solucao[i + 1]["bebida"] == "agua")):
-                pontuacao += 4
-    return pontuacao
+    # 15. O homem que fuma Blends é vizinho do que bebe Água
+    for i, c in enumerate(casas):
+        if c['cigarro'] == 'Blends':
+            if ((i > 0 and casas[i-1]['bebida'] == 'Água') or (i < 4 and casas[i+1]['bebida'] == 'Água')):
+                score += 1
+                break
 
-
-# Realiza o cruzamento de duas soluções gerando dois filhos
-def crossover(solucao1, solucao2):
-    filho1 = []
-    filho2 = []
-
-    for i in range(5):
-        filho1.append({"cor": solucao1[i]["cor"],
-                       "nacionalidade": solucao1[i]["nacionalidade"],
-                       "bebida": solucao2[i]["bebida"],
-                       "cigarro": solucao2[i]["cigarro"],
-                       "animal": solucao2[i]["animal"],
-                       })
-        filho2.append({"cor": solucao2[i]["cor"],
-                       "nacionalidade": solucao2[i]["nacionalidade"],
-                       "bebida": solucao1[i]["bebida"],
-                       "cigarro": solucao1[i]["cigarro"],
-                       "animal": solucao1[i]["animal"],
-                       })
-
-    return filho1, filho2
+    return score
 
 
-# Realiza mutação em uma solução
-def mutation(solucao):
-    pos_casa1 = random.randint(0,4)
-    pos_casa2 = random.randint(0,4)
-    while (pos_casa1 == pos_casa2):
-        pos_casa2 = random.randint(0, 4)
+def gerar_individuo_aleatorio():
+    """Gera uma solução de 75 bits com atributos aleatórios"""
+    individuo = []
+    for _ in range(CASAS_TOTAL):
+        individuo.extend(inteiro_para_binario(random.randrange(5)))  # Cor
+        individuo.extend(inteiro_para_binario(random.randrange(5)))  # Nacionalidade
+        individuo.extend(inteiro_para_binario(random.randrange(5)))  # Bebida
+        individuo.extend(inteiro_para_binario(random.randrange(5)))  # Cigarro
+        individuo.extend(inteiro_para_binario(random.randrange(5)))  # Animal
+    return ''.join(individuo)
 
-    pos_atributo = random.randint(0,4)
+def crossover(a, b):
+    """Crossover de um ponto"""
+    ponto = random.randint(1, TAMANHO_CROMOSSOMO - 1)
+    return a[:ponto] + b[ponto:], b[:ponto] + a[ponto:]
 
-    atributos = ["cor","nacionalidade","bebida","cigarro","animal"]
-    mutante = solucao
+def mutacao(individuo, taxa=0.01):
+    """Inverte bits com uma certa taxa"""
+    return ''.join(random.choice(['0','1']) if random.random() < taxa else bit for bit in individuo)
 
-    aux_atributo = ""
-    aux_atributo = mutante[pos_casa1][atributos[pos_atributo]]
-    mutante[pos_casa1][atributos[pos_atributo]] = mutante[pos_casa2][atributos[pos_atributo]]
-    mutante[pos_casa2][atributos[pos_atributo]] = aux_atributo
-    return mutante
+def selecao(populacao, scores):
+    """Roleta para seleção"""
+    total = sum(scores)
+    pick = random.uniform(0, total)
+    atual = 0
+    for individuo, score in zip(populacao, scores):
+        atual += score
+        if atual >= pick:
+            return individuo
+def selecao_torneio(populacao, scores, k=3):
+    """Seleciona o melhor de k indivíduos aleatórios (Torneio)"""
+    escolhidos = random.sample(list(zip(populacao, scores)), k)
+    vencedor = max(escolhidos, key=lambda x: x[1])
+    return vencedor[0]
+
+def executar_ag(tam_pop=300, taxa_mut=0.01, max_geracoes=10000, elitismo=1):
+    """Execução do AG com Elitismo e Seleção por Torneio para melhorar eficiência"""
+    populacao = [gerar_individuo_aleatorio() for _ in range(tam_pop)]
+    melhor_individuo = None
+    melhor_score = -1
+
+    for geracao in range(1, max_geracoes + 1):
+        scores = [fitness(ind) for ind in populacao]
+        score_max = max(scores)
+
+        # Armazena o melhor atual
+        if score_max > melhor_score:
+            melhor_score = score_max
+            melhor_individuo = populacao[scores.index(score_max)]
+
+        # Relatório
+        print(f"Geração {geracao:>5} | Maior Pontuação: {score_max}")
+
+        # Critério de sucesso
+        if 30 in scores:
+            indice = scores.index(30)
+            vencedor = populacao[indice]
+            print(f"\n🏁 Solução encontrada na geração {geracao}! \n")
+            casas_solucao = decodificar_cromossomo(vencedor)
+            for i, casa in enumerate(casas_solucao, 1):
+                print(f"Casa {i}: {casa}")
+            return vencedor
+
+        # Elitismo: preserva os melhores indivíduos
+        nova_pop = []
+        elite = sorted(populacao, key=lambda ind: fitness(ind), reverse=True)[:elitismo]
+        nova_pop.extend(elite)
+
+        # Preenche o restante com seleção por torneio
+        while len(nova_pop) < tam_pop:
+            p1 = selecao_torneio(populacao, scores)
+            p2 = selecao_torneio(populacao, scores)
+            filho1, filho2 = crossover(p1, p2)
+            nova_pop.extend([
+                mutacao(filho1, taxa_mut),
+                mutacao(filho2, taxa_mut)
+            ])
+
+        populacao = nova_pop[:tam_pop]
+
+    # Resultado Final
+    print("\n❌ Não encontrou solução perfeita no número máximo de gerações.")
+    print(f"💡 Melhor solução encontrada (Pontuação: {melhor_score}):\n")
+    casas_solucao = decodificar_cromossomo(melhor_individuo)
+    for i, casa in enumerate(casas_solucao, 1):
+        print(f"Casa {i}: {casa}")
+
+    return None
 
 
-def insere_imigrante():
-    return create()
 
 
-def roleta(tabela):
-    tipos_de_pontos = []
-    for i in tabela:
-        tipos_de_pontos.append(i)
-
-    result1 = random.choices(tipos_de_pontos, weights=tipos_de_pontos, k=1)[0]
-    result2 = random.choices(tipos_de_pontos, weights=tipos_de_pontos, k=1)[0]
-    return  random.choice(tabela[result1]), random.choice(tabela[result2])
-
-
-def imprime_solucao(resposta):
-    i = 1
-    for casa in resposta:
-        print(f"==Casa {i}==")
-        i += 1
-        for chave, valor in casa.items():
-            print(f"{chave}: {valor}")
-        print()  # Adiciona uma linha em branco entre os dicionários para melhor legibilidade
-
-populacao = []
-geracao = []
-quantidade_geracoes = 0
-maior_pontuacao = 0
-resposta = []
-
-# Criando população inicial
-for i in range(tamanho_populacao):
-    populacao.append(create())
-
-while (maior_pontuacao != 36):
-    # log da geração atual
-    log = "Geração {n_geracao} -> maior pontuação: {pontuacao}"
-    print(log.format(n_geracao=quantidade_geracoes, solucao=resposta, pontuacao=maior_pontuacao))
-
-    # Avaliando cada solução com a função fitness
-
-        #ranking se dá dessa forma: ranking[id_da_solucao] = pontuacao
-    ranking = {}
-        #tabela de pontos se dá dessa forma: tabela_de_pontos [pontuacao] = solucao
-    tabela_por_pontos = defaultdict(list)
-    media_pontos = 0
-    for i in range(tamanho_populacao):
-        solucao = populacao[i]
-        pontuacao = fitness(solucao)
-        tabela_por_pontos[pontuacao].append(solucao)
-        ranking[i] = pontuacao
-        media_pontos += pontuacao
-    media_pontos = media_pontos / tamanho_populacao
-
-    # Ordenando a tabela ranking para que os primeiros sejam os mais aptos
-    ranking = dict(
-        sorted(ranking.items(), key=lambda item: item[1], reverse=True))
-
-    #contem todas as pontuações em ordem decrescente
-    classificacao = list(ranking.values())
-
-    maior_pontuacao = classificacao[0]
-    resposta = tabela_por_pontos[maior_pontuacao]
-
-    # chaves_ranking recebe a lista de todas as chaves ordenadas decrescentemente, de acordo com a pontuação.
-    # a chave funciona como id de uma solucao
-    chaves_ranking = list(ranking.keys())
-
-    # Sobrevivendo as melhores soluções
-    for i in range(round(taxa_sobrevivencia * tamanho_populacao)):
-        geracao.append(populacao[chaves_ranking[i]])
-
-    # Cruzamento utilizando roleta
-    for i in range(round(taxa_sobrevivencia * tamanho_populacao),
-                   tamanho_populacao,2):
-        if (i + 1 < tamanho_populacao):
-            pai1, pai2 = roleta(tabela_por_pontos)
-            filho1, filho2 = crossover(pai1, pai2)
-            geracao.append(filho1)
-            geracao.append(filho2)
-
-    # Realizando mutação
-    for i in range(round(taxa_mutacao * tamanho_populacao), tamanho_populacao):
-        if random.random() <= taxa_mutacao:
-            geracao[i] = mutation(geracao[i])
-
-    #Adicionando imigrante
-    for i in range(round(taxa_migracao * tamanho_populacao),
-                   tamanho_populacao):
-        if random.random() <= taxa_migracao:
-            geracao[i] = insere_imigrante()
-
-    populacao = geracao
-    geracao = []
-    ranking = {}
-    quantidade_geracoes += 1
-    tabela_por_pontos.clear()
-
-log = "Geração {n_geracao}... Solução: "
-print(log.format(n_geracao=quantidade_geracoes))
-imprime_solucao(resposta[0])
-
+if __name__ == '__main__':
+  executar_ag()
